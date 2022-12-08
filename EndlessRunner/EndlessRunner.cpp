@@ -9,6 +9,8 @@
 #include "VertexBufferObject.h"
 #include "ElementBufferObject.h"
 
+#define PIXEL_SIZE 20
+
 float Normalize(float input, float min, float max)
 {
 	return (input - min) / (max - min);
@@ -29,7 +31,7 @@ void DrawPixel(int posX, int posY)
 	VBO.Unbind();
 
 	VAO.Bind();
-	glPointSize(2);
+	glPointSize(PIXEL_SIZE);
 	glDrawArrays(GL_POINTS, 0, 1);
 
 	VAO.Unbind();
@@ -53,10 +55,10 @@ void BLDDisplayLine(float x1, float y1, float x2, float y2)
 
 	if (dx < 0) dx = -dx;
 	if (dy < 0) dy = -dy;
-	incx = 1;
-	if (x2 < x1) incx = -1;
-	incy = 1;
-	if (y2 < y1) incy = -1;
+	incx = PIXEL_SIZE;
+	if (x2 < x1) incx = -PIXEL_SIZE;
+	incy = PIXEL_SIZE;
+	if (y2 < y1) incy = -PIXEL_SIZE;
 	x = x1; y = y1;
 	if (dx > dy)
 	{
@@ -64,7 +66,7 @@ void BLDDisplayLine(float x1, float y1, float x2, float y2)
 		e = 2 * dy - dx;
 		inc1 = 2 * (dy - dx);
 		inc2 = 2 * dy;
-		for (i = 0; i < dx; i++)
+		for (i = 0; i < dx / PIXEL_SIZE; i++)
 		{
 			if (e >= 0)
 			{
@@ -82,7 +84,7 @@ void BLDDisplayLine(float x1, float y1, float x2, float y2)
 		e = 2 * dx - dy;
 		inc1 = 2 * (dx - dy);
 		inc2 = 2 * dx;
-		for (i = 0; i < dy; i++)
+		for (i = 0; i < dy / PIXEL_SIZE; i++)
 		{
 			if (e >= 0)
 			{
@@ -104,10 +106,10 @@ void DDADisplayLine(float x1, float y1, float x2, float y2)
 	dx = x2 - x1;
 	dy = y2 - y1;
 	if (abs(dx) > abs(dy))
-		step = abs(dx);
+		step = abs(dx) / PIXEL_SIZE;
 	else
-		step = abs(dy);
-	Xin = dx / step;
+		step = abs(dy) / PIXEL_SIZE;
+	Xin = (dx) / step;
 	Yin = dy / step;
 	x = x1;
 	y = y1;
@@ -117,9 +119,75 @@ void DDADisplayLine(float x1, float y1, float x2, float y2)
 
 	for (k = 1; k <= step; k++)
 	{
-		x = x + Xin;
-		y = y + Yin;
+		x += Xin;
+		y += Yin;
 		DrawPixel(x, y);
+	}
+}
+
+void MPLDrawLine(float x1, float y1, float x2, float y2)
+{
+	int dx = x2 - x1;
+	int dy = y2 - y1;
+
+	if (dy <= dx) {
+		//Decision Parameters
+		int d = dy - (dx / 2);
+		int x = x1, y = y1;
+
+		// Plot initial given point
+		DrawPixel(x, y);
+
+		// Iterate over value of X
+		while (x < x2)
+		{
+			x += PIXEL_SIZE;
+
+			// E or East is chosen
+			if (d < 0)
+				d = d + dy;
+
+			// NE or North East is chosen
+			else
+			{
+				d += (dy - dx);
+				y += PIXEL_SIZE;
+			}
+
+			// Plot intermediate points
+			DrawPixel(x, y);
+		}
+	}
+
+	else if (dx < dy)
+	{
+		// initial value of decision parameter d
+		int d = dx - (dy / 2);
+		int x = x1, y = y1;
+
+		// Plot initial given point
+		DrawPixel(x, y);
+
+		// iterate through value of X
+		while (y < y2)
+		{
+			y += PIXEL_SIZE;
+
+			// E or East is chosen
+			if (d < 0)
+				d = d + dx;
+
+			// NE or North East is chosen
+			// NE or North East is chosen
+			else
+			{
+				d += (dx - dy);
+				x += PIXEL_SIZE;
+			}
+
+			// Plot intermediate points
+			DrawPixel(x, y);
+		}
 	}
 }
 
@@ -152,9 +220,8 @@ int main()
 
 	Shader shaderProgram("./Shaders/Vertex.GLSL", "./Shaders/Fragment.GLSL");
 
-	glPointSize(50);
-
 	double mouseX = 0, mouseY = 0;
+
 	while (!glfwWindowShouldClose(window))
 	{
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
@@ -165,6 +232,7 @@ int main()
 		glfwGetCursorPos(window, &mouseX, &mouseY);
 		//DDADisplayLine(0, 0, mouseX - 400, -1 * (mouseY - 400));
 		BLDDisplayLine(0, 0, mouseX - 400, -1 * (mouseY - 400));
+		//MPLDrawLine(0, 0, mouseX - 400, -1 * (mouseY - 400));
 		glfwSwapBuffers(window);
 		//Take Care of all glfw Events
 		glfwPollEvents();
