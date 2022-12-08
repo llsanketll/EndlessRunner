@@ -3,6 +3,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <vector>
 #include "ShaderClass.h"
 #include "VertexArrayObject.h"
@@ -10,6 +12,7 @@
 #include "ElementBufferObject.h"
 
 #define PIXEL_SIZE 2  
+int width = 800, height = 800;
 
 float Normalize(float input, float min, float max)
 {
@@ -44,93 +47,12 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	glViewport(0, 0, width, height);
 }
 
-void BLDDisplayLine(float x1, float y1, float x2, float y2)
-{
-	int dx, dy, i, e;
-	int incx, incy, inc1, inc2;
-	int x, y;
-
-	dx = x2 - x1;
-	dy = y2 - y1;
-
-	if (dx < 0) dx = -dx;
-	if (dy < 0) dy = -dy;
-	incx = PIXEL_SIZE;
-	if (x2 < x1) incx = -PIXEL_SIZE;
-	incy = PIXEL_SIZE;
-	if (y2 < y1) incy = -PIXEL_SIZE;
-	x = x1; y = y1;
-	if (dx > dy)
-	{
-		DrawPixel(x, y);
-		e = 2 * dy - dx;
-		inc1 = 2 * (dy - dx);
-		inc2 = 2 * dy;
-		for (i = 0; i < dx / PIXEL_SIZE; i++)
-		{
-			if (e >= 0)
-			{
-				y += incy;
-				e += inc1;
-			}
-			else
-				e += inc2;
-			x += incx;
-			DrawPixel(x, y);
-		}
-	}
-	else {
-		DrawPixel(x, y);
-		e = 2 * dx - dy;
-		inc1 = 2 * (dx - dy);
-		inc2 = 2 * dx;
-		for (i = 0; i < dy / PIXEL_SIZE; i++)
-		{
-			if (e >= 0)
-			{
-				x += incx;
-				e += inc1;
-			}
-			else
-				e += inc2;
-			y += incy;
-			DrawPixel(x, y);
-		}
-	}
-
-}
-
-void DDADisplayLine(float x1, float y1, float x2, float y2)
-{
-	float dy, dx, step, x, y, k, Xin, Yin;
-	dx = x2 - x1;
-	dy = y2 - y1;
-	if (abs(dx) > abs(dy))
-		step = abs(dx) / PIXEL_SIZE;
-	else
-		step = abs(dy) / PIXEL_SIZE;
-	Xin = (dx) / step;
-	Yin = dy / step;
-	x = x1;
-	y = y1;
-
-	DrawPixel(x, y);
-
-
-	for (k = 1; k <= step; k++)
-	{
-		x += Xin;
-		y += Yin;
-		DrawPixel(x, y);
-	}
-}
-
-void MidpointDrawCircle(int r)
+void MidpointDrawCircle(int centerX, int centerY, int r)
 {
 	int x = 0;
 	int y = r;
 	float decision = 5 / 4 - r;
-	DrawPixel(x, y);
+	DrawPixel(x + centerX, y + centerY);
 
 	while (y > x)
 	{
@@ -145,81 +67,108 @@ void MidpointDrawCircle(int r)
 			x++;
 			decision += 2 * (x - y) + 1;
 		}
-		DrawPixel(x, y);
-		DrawPixel(x, -y);
-		DrawPixel(-x, y);
-		DrawPixel(-x, -y);
-		DrawPixel(y, x);
-		DrawPixel(-y, x);
-		DrawPixel(y, -x);
-		DrawPixel(-y, -x);
+		DrawPixel(x + centerX, y + centerY);
+		DrawPixel(x + centerX, -y + centerY);
+		DrawPixel(-x + centerX, y + centerY);
+		DrawPixel(-x + centerX, -y + centerY);
+		DrawPixel(y + centerX, x + centerY);
+		DrawPixel(-y + centerX, x + centerY);
+		DrawPixel(y + centerX, -x + centerY);
+		DrawPixel(-y + centerX, -x + centerY);
 	}
-
 }
 
-void MidPointDrawEllipse(int xCenter, int yCenter, int rx, int ry)
+void DisplayRotation(Shader& shaderProgram, VertexArrayObject& VAO)
 {
-	float x = 0;
-	float y = ry;//(0,ry) ---
-	float p1 = ry * ry - (rx * rx) * ry + (rx * rx) * (0.25);
-	//slope
-	float dx = 2 * (ry * ry) * x;
-	float dy = 2 * (rx * rx) * y;
-	while (dx < dy)
-	{
-		//plot (x,y)
-		DrawPixel(xCenter + x, yCenter + y);
-		DrawPixel(xCenter - x, yCenter + y);
-		DrawPixel(xCenter + x, yCenter - y);
-		DrawPixel(xCenter - x, yCenter - y);
-		if (p1 < 0)
-		{
-			x = x + 1;
-			dx = 2 * (ry * ry) * x;
-			p1 = p1 + dx + (ry * ry);
-		}
-		else
-		{
-			x = x + 1;
-			y = y - 1;
-			dx = 2 * (ry * ry) * x;
-			dy = 2 * (rx * rx) * y;
-			p1 = p1 + dx - dy + (ry * ry);
-		}
-	}
-	//ploting for 2nd region of 1st quardant and the slope will be > -1
-	 //----------------------Region-2------------------------//
-	float p2 = (ry * ry) * (x + 0.5) * (x + 0.5) + (rx * rx) * (y - 1) * (y - 1) - (rx * rx) * (ry * ry);
+	glm::mat4 trans = glm::mat4(1.0f);
+	trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+	GLuint transformLoc = glGetUniformLocation(shaderProgram.ID, "transform");
+	glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 
-
-	while (y > 0)
-	{
-		//plot (x,y)
-		DrawPixel(xCenter + x, yCenter + y);
-		DrawPixel(xCenter - x, yCenter + y);
-		DrawPixel(xCenter + x, yCenter - y);
-		DrawPixel(xCenter - x, yCenter - y);     //glEnd();
-		if (p2 > 0)
-		{
-			x = x;
-			y = y - 1;
-			dy = 2 * (rx * rx) * y;
-			//dy = 2 * rx * rx *y;
-			p2 = p2 - dy + (rx * rx);
-		}
-		else
-		{
-			x = x + 1;
-			y = y - 1;
-			dy = dy - 2 * (rx * rx);
-			dx = dx + 2 * (ry * ry);
-			p2 = p2 + dx -
-				dy + (rx * rx);
-		}
-	}
-
+	VAO.Bind();
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
+void DisplayScale(Shader& shaderProgram, float scaleX, float scaleY, VertexArrayObject& VAO)
+{
+	glm::mat4 trans = glm::mat4(1.0f);
+	trans = glm::scale(trans, glm::vec3(scaleX, scaleY, 1));
+	GLuint transformLoc = glGetUniformLocation(shaderProgram.ID, "transform");
+	glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+
+	VAO.Bind();
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}
+
+void DisplayTranslation(Shader& shaderProgram, float& x, float& y, float& speedX, float& speedY, float deltaTime)
+{
+	x += speedX * deltaTime;
+	y += speedY * deltaTime;
+	if (x + 25 > 200 || x - 25 < -200) speedX *= -1;
+	if (y + 25 > 200 || y - 25 < -200) speedY *= -1;
+
+	glm::mat4 trans = glm::mat4(1.0f);
+	trans = glm::translate(trans, glm::vec3(Normalize(x, 0, 400), Normalize(y, 0, 400), 0));
+	GLuint transformLoc = glGetUniformLocation(shaderProgram.ID, "transform");
+	glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+
+	MidpointDrawCircle(x, y, 50);
+}
+
+void DisplayShear(Shader& shaderProgram, float x, VertexArrayObject& VAO)
+{
+	glm::mat4 trans = glm::mat4(
+		1.0f, 0.0f, 0.0f, 0.0f,
+		x, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	);
+	GLuint transformLoc = glGetUniformLocation(shaderProgram.ID, "transform");
+	glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+
+	VAO.Bind();
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}
+
+void DisplayReflection(GLFWwindow* window, Shader& shaderProgram, VertexArrayObject VAO, float x, float y)
+{
+	glm::mat4 trans(1.0f);
+	glm::mat4 ReflectX(
+		1, 0, 0, 0,
+		0, -1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1
+	);
+
+	glm::mat4 ReflectY(
+		-1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1
+	);
+
+	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
+		trans = ReflectX * trans;
+	if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS)
+		trans = ReflectY * trans;
+	trans = glm::translate(trans, glm::vec3(Normalize(x, 0, 400), Normalize(y, 0, 400), 0));
+	GLuint transformLoc = glGetUniformLocation(shaderProgram.ID, "transform");
+	glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+	VAO.Bind();
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}
+
+void TakeInput(GLFWwindow* window, float& x, float& y)
+{
+	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+		x += 1;
+	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+		x -= 1;
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+		y += 1;
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+		y -= 1;
+}
 
 int main()
 {
@@ -234,7 +183,7 @@ int main()
 	const GLFWvidmode* screen = glfwGetVideoMode(primaryMonitor);
 	std::cout << screen->width << ", " << screen->height << std::endl;
 
-	GLFWwindow* window = glfwCreateWindow(800, 800, "EndlessRunner", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(width, height, "EndlessRunner", NULL, NULL);
 	if (window == NULL)
 	{
 		std::cout << "failed  to create" << std::endl;
@@ -245,13 +194,39 @@ int main()
 
 	//Load GLAD so it configures OPENGL
 	gladLoadGL();
-	glViewport(0, 0, 800, 800);
+	glViewport(0, 0, width, height);
+
+	GLfloat vertices[] = {
+		-0.25f, -0.25f, 0.0f,
+		0.25f, -0.25f, 0.0f,
+		-0.25f, 0.25f, 0.0f,
+		0.25f, 0.25f, 0.0f,
+	};
+
+	GLuint indices[] = {
+		0, 1, 2,
+		2, 1, 3
+	};
 
 	Shader shaderProgram("./Shaders/Vertex.GLSL", "./Shaders/Fragment.GLSL");
 
-	double mouseX = 0, mouseY = 0;
+	VertexArrayObject VAO;
+	VAO.Bind();
 
-	int radiusX = 10, radiusY = 20;
+	VertexBufferObject VBO(vertices, sizeof(vertices));
+	ElementBufferObject EBO(indices, sizeof(indices));
+
+	VAO.LinkVBO(VBO, 0);
+	VAO.Unbind();
+	VBO.Unbind();
+	EBO.Unbind();
+
+
+
+	double mouseX = 0, mouseY = 0;
+	float lastTime = 0, currentTime, deltaTime;
+	float x = 150, y = 150;
+	float speedX = 100, speedY = 50;
 	while (!glfwWindowShouldClose(window))
 	{
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
@@ -259,23 +234,30 @@ int main()
 
 		shaderProgram.Activate();
 
-		glfwGetCursorPos(window, &mouseX, &mouseY);
-		if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-			radiusX += 1;
-		if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-			radiusX -= 1;
+		currentTime = static_cast<float>(glfwGetTime());
+		deltaTime = currentTime - lastTime;
+		lastTime = currentTime;
 
-		if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-			radiusY += 1;
-		if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-			radiusY -= 1;
-		//MidpointDrawCircle(radius);
-		MidPointDrawEllipse(0, 0, radiusX, radiusY);
 
-		glfwSwapBuffers(window);
+		//DisplayTranslation(shaderProgram, x, y, speedX, speedY, deltaTime);
+
+		//DisplayRotation(shaderProgram, VAO);
+
+		TakeInput(window, x, y);
+		//DisplayScale(shaderProgram, Normalize(x, 1, 400), Normalize(y, 1, 400), VAO);
+		//DisplayShear(shaderProgram, Normalize(x, 0, 400), VAO);
+
+
+		DisplayReflection(window, shaderProgram, VAO, x, y);
+
+
 		//Take Care of all glfw Events
+		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
+	VAO.Delete();
+	VBO.Delete();
+	EBO.Delete();
 
 	shaderProgram.Delete();
 	glfwDestroyWindow(window);
