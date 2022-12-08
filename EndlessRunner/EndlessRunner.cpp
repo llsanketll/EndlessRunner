@@ -9,7 +9,7 @@
 #include "VertexBufferObject.h"
 #include "ElementBufferObject.h"
 
-#define PIXEL_SIZE 20
+#define PIXEL_SIZE 2  
 
 float Normalize(float input, float min, float max)
 {
@@ -125,70 +125,99 @@ void DDADisplayLine(float x1, float y1, float x2, float y2)
 	}
 }
 
-void MPLDrawLine(float x1, float y1, float x2, float y2)
+void MidpointDrawCircle(int r)
 {
-	int dx = x2 - x1;
-	int dy = y2 - y1;
+	int x = 0;
+	int y = r;
+	float decision = 5 / 4 - r;
+	DrawPixel(x, y);
 
-	if (dy <= dx) {
-		//Decision Parameters
-		int d = dy - (dx / 2);
-		int x = x1, y = y1;
-
-		// Plot initial given point
-		DrawPixel(x, y);
-
-		// Iterate over value of X
-		while (x < x2)
-		{
-			x += PIXEL_SIZE;
-
-			// E or East is chosen
-			if (d < 0)
-				d = d + dy;
-
-			// NE or North East is chosen
-			else
-			{
-				d += (dy - dx);
-				y += PIXEL_SIZE;
-			}
-
-			// Plot intermediate points
-			DrawPixel(x, y);
-		}
-	}
-
-	else if (dx < dy)
+	while (y > x)
 	{
-		// initial value of decision parameter d
-		int d = dx - (dy / 2);
-		int x = x1, y = y1;
-
-		// Plot initial given point
-		DrawPixel(x, y);
-
-		// iterate through value of X
-		while (y < y2)
+		if (decision < 0)
 		{
-			y += PIXEL_SIZE;
+			x++;
+			decision += 2 * x + 1;
+		}
+		else
+		{
+			y--;
+			x++;
+			decision += 2 * (x - y) + 1;
+		}
+		DrawPixel(x, y);
+		DrawPixel(x, -y);
+		DrawPixel(-x, y);
+		DrawPixel(-x, -y);
+		DrawPixel(y, x);
+		DrawPixel(-y, x);
+		DrawPixel(y, -x);
+		DrawPixel(-y, -x);
+	}
 
-			// E or East is chosen
-			if (d < 0)
-				d = d + dx;
+}
 
-			// NE or North East is chosen
-			// NE or North East is chosen
-			else
-			{
-				d += (dx - dy);
-				x += PIXEL_SIZE;
-			}
-
-			// Plot intermediate points
-			DrawPixel(x, y);
+void MidPointDrawEllipse(int xCenter, int yCenter, int rx, int ry)
+{
+	float x = 0;
+	float y = ry;//(0,ry) ---
+	float p1 = ry * ry - (rx * rx) * ry + (rx * rx) * (0.25);
+	//slope
+	float dx = 2 * (ry * ry) * x;
+	float dy = 2 * (rx * rx) * y;
+	while (dx < dy)
+	{
+		//plot (x,y)
+		DrawPixel(xCenter + x, yCenter + y);
+		DrawPixel(xCenter - x, yCenter + y);
+		DrawPixel(xCenter + x, yCenter - y);
+		DrawPixel(xCenter - x, yCenter - y);
+		if (p1 < 0)
+		{
+			x = x + 1;
+			dx = 2 * (ry * ry) * x;
+			p1 = p1 + dx + (ry * ry);
+		}
+		else
+		{
+			x = x + 1;
+			y = y - 1;
+			dx = 2 * (ry * ry) * x;
+			dy = 2 * (rx * rx) * y;
+			p1 = p1 + dx - dy + (ry * ry);
 		}
 	}
+	//ploting for 2nd region of 1st quardant and the slope will be > -1
+	 //----------------------Region-2------------------------//
+	float p2 = (ry * ry) * (x + 0.5) * (x + 0.5) + (rx * rx) * (y - 1) * (y - 1) - (rx * rx) * (ry * ry);
+
+
+	while (y > 0)
+	{
+		//plot (x,y)
+		DrawPixel(xCenter + x, yCenter + y);
+		DrawPixel(xCenter - x, yCenter + y);
+		DrawPixel(xCenter + x, yCenter - y);
+		DrawPixel(xCenter - x, yCenter - y);     //glEnd();
+		if (p2 > 0)
+		{
+			x = x;
+			y = y - 1;
+			dy = 2 * (rx * rx) * y;
+			//dy = 2 * rx * rx *y;
+			p2 = p2 - dy + (rx * rx);
+		}
+		else
+		{
+			x = x + 1;
+			y = y - 1;
+			dy = dy - 2 * (rx * rx);
+			dx = dx + 2 * (ry * ry);
+			p2 = p2 + dx -
+				dy + (rx * rx);
+		}
+	}
+
 }
 
 
@@ -222,6 +251,7 @@ int main()
 
 	double mouseX = 0, mouseY = 0;
 
+	int radiusX = 10, radiusY = 20;
 	while (!glfwWindowShouldClose(window))
 	{
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
@@ -230,9 +260,18 @@ int main()
 		shaderProgram.Activate();
 
 		glfwGetCursorPos(window, &mouseX, &mouseY);
-		//DDADisplayLine(0, 0, mouseX - 400, -1 * (mouseY - 400));
-		BLDDisplayLine(0, 0, mouseX - 400, -1 * (mouseY - 400));
-		//MPLDrawLine(0, 0, mouseX - 400, -1 * (mouseY - 400));
+		if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+			radiusX += 1;
+		if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+			radiusX -= 1;
+
+		if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+			radiusY += 1;
+		if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+			radiusY -= 1;
+		//MidpointDrawCircle(radius);
+		MidPointDrawEllipse(0, 0, radiusX, radiusY);
+
 		glfwSwapBuffers(window);
 		//Take Care of all glfw Events
 		glfwPollEvents();
