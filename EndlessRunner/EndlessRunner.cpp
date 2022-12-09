@@ -22,14 +22,14 @@ float Normalize(float input, float min, float max)
 void DrawPixel(int posX, int posY)
 {
 	GLfloat vertices[] = {
-		Normalize(posX, 0, 400), Normalize(posY, 0, 400), 0
+		Normalize(posX, 0, width / 2), Normalize(posY, 0, height / 2), 0
 	};
 
 	//Drawing The initial coordinate
 	VertexArrayObject VAO;
 	VAO.Bind();
 	VertexBufferObject VBO(vertices, sizeof(vertices));
-	VAO.LinkVBO(VBO, 0);
+	VAO.LinkAttirb(VBO, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
 	VAO.Unbind();
 	VBO.Unbind();
 
@@ -81,38 +81,17 @@ void MidpointDrawCircle(int centerX, int centerY, int r)
 void DisplayRotation(Shader& shaderProgram, VertexArrayObject& VAO)
 {
 	glm::mat4 trans = glm::mat4(1.0f);
-	trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
-	GLuint transformLoc = glGetUniformLocation(shaderProgram.ID, "transform");
+	trans = glm::rotate(trans, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
+	GLuint transformLoc = glGetUniformLocation(shaderProgram.ID, "model");
 	glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
-
-	VAO.Bind();
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
 void DisplayScale(Shader& shaderProgram, float scaleX, float scaleY, VertexArrayObject& VAO)
 {
 	glm::mat4 trans = glm::mat4(1.0f);
-	trans = glm::scale(trans, glm::vec3(scaleX, scaleY, 1));
-	GLuint transformLoc = glGetUniformLocation(shaderProgram.ID, "transform");
+	trans = glm::scale(trans, glm::vec3(scaleX, scaleY, scaleX));
+	GLuint transformLoc = glGetUniformLocation(shaderProgram.ID, "model");
 	glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
-
-	VAO.Bind();
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-}
-
-void DisplayTranslation(Shader& shaderProgram, float& x, float& y, float& speedX, float& speedY, float deltaTime)
-{
-	x += speedX * deltaTime;
-	y += speedY * deltaTime;
-	if (x + 25 > 200 || x - 25 < -200) speedX *= -1;
-	if (y + 25 > 200 || y - 25 < -200) speedY *= -1;
-
-	glm::mat4 trans = glm::mat4(1.0f);
-	trans = glm::translate(trans, glm::vec3(Normalize(x, 0, 400), Normalize(y, 0, 400), 0));
-	GLuint transformLoc = glGetUniformLocation(shaderProgram.ID, "transform");
-	glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
-
-	MidpointDrawCircle(x, y, 50);
 }
 
 void DisplayShear(Shader& shaderProgram, float x, VertexArrayObject& VAO)
@@ -123,7 +102,7 @@ void DisplayShear(Shader& shaderProgram, float x, VertexArrayObject& VAO)
 		0.0f, 0.0f, 1.0f, 0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f
 	);
-	GLuint transformLoc = glGetUniformLocation(shaderProgram.ID, "transform");
+	GLuint transformLoc = glGetUniformLocation(shaderProgram.ID, "model");
 	glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 
 	VAO.Bind();
@@ -151,11 +130,12 @@ void DisplayReflection(GLFWwindow* window, Shader& shaderProgram, VertexArrayObj
 		trans = ReflectX * trans;
 	if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS)
 		trans = ReflectY * trans;
-	trans = glm::translate(trans, glm::vec3(Normalize(x, 0, 400), Normalize(y, 0, 400), 0));
-	GLuint transformLoc = glGetUniformLocation(shaderProgram.ID, "transform");
+	trans = glm::translate(trans, glm::vec3(Normalize(x, 0, width / 2), Normalize(y, 0, height / 2), 0));
+	GLuint transformLoc = glGetUniformLocation(shaderProgram.ID, "model");
 	glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 	VAO.Bind();
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+	VAO.Unbind();
 }
 
 void TakeInput(GLFWwindow* window, float& x, float& y)
@@ -197,15 +177,37 @@ int main()
 	glViewport(0, 0, width, height);
 
 	GLfloat vertices[] = {
-		-0.25f, -0.25f, 0.0f,
-		0.25f, -0.25f, 0.0f,
-		-0.25f, 0.25f, 0.0f,
-		0.25f, 0.25f, 0.0f,
+		// front
+	   -1.0, -1.0,  1.0, 1.0f, 0.0f, 0.0f,
+		1.0, -1.0,  1.0,  1.0f, 0.0f, 0.0f,
+		1.0,  1.0,  1.0, 1.0f, 0.0f, 0.0f,
+	   -1.0,  1.0,  1.0, 1.0f, 0.0f, 0.0f,
+	   // back
+	   -1.0, -1.0, -1.0, 0.0f, 0.0f, 1.0f ,
+		1.0, -1.0, -1.0,  0.0f, 0.0f, 1.0f,
+		1.0,  1.0, -1.0,  0.0f, 0.0f, 1.0f,
+	   -1.0,  1.0, -1.0,  0.0f, 0.0f, 1.0f
 	};
 
 	GLuint indices[] = {
+		// front
 		0, 1, 2,
-		2, 1, 3
+		2, 3, 0,
+		// right
+		1, 5, 6,
+		6, 2, 1,
+		// back
+		7, 6, 5,
+		5, 4, 7,
+		// left
+		4, 0, 3,
+		3, 7, 4,
+		// bottom
+		4, 5, 1,
+		1, 0, 4,
+		// top
+		3, 2, 6,
+		6, 7, 3
 	};
 
 	Shader shaderProgram("./Shaders/Vertex.GLSL", "./Shaders/Fragment.GLSL");
@@ -216,21 +218,23 @@ int main()
 	VertexBufferObject VBO(vertices, sizeof(vertices));
 	ElementBufferObject EBO(indices, sizeof(indices));
 
-	VAO.LinkVBO(VBO, 0);
+	VAO.LinkAttirb(VBO, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
+	VAO.LinkAttirb(VBO, 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 	VAO.Unbind();
 	VBO.Unbind();
 	EBO.Unbind();
 
 
-
 	double mouseX = 0, mouseY = 0;
 	float lastTime = 0, currentTime, deltaTime;
-	float x = 150, y = 150;
+	float x = 1, y = 1;
 	float speedX = 100, speedY = 50;
+
+	glEnable(GL_DEPTH_TEST);
 	while (!glfwWindowShouldClose(window))
 	{
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		shaderProgram.Activate();
 
@@ -239,17 +243,32 @@ int main()
 		lastTime = currentTime;
 
 
-		//DisplayTranslation(shaderProgram, x, y, speedX, speedY, deltaTime);
 
-		//DisplayRotation(shaderProgram, VAO);
 
 		TakeInput(window, x, y);
-		//DisplayScale(shaderProgram, Normalize(x, 1, 400), Normalize(y, 1, 400), VAO);
-		//DisplayShear(shaderProgram, Normalize(x, 0, 400), VAO);
 
 
-		DisplayReflection(window, shaderProgram, VAO, x, y);
 
+		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 view = glm::mat4(1.0f);
+		glm::mat4 projection = glm::mat4(1.0f);
+		view = glm::translate(view, glm::vec3(0.0f, -0.5f, -10.0f));
+		projection = glm::perspective(glm::radians(45.0f), (float)(height / width), 0.1f, 100.0f);
+		model = glm::translate(model, glm::vec3(Normalize(x * 10, 0, 400), Normalize(y * 10, 0, 400), 0.0f));
+		float scaleFactor = Normalize(abs(sin(glfwGetTime()) * 200) + 100, 0, 400);
+		model = glm::scale(model, glm::vec3(scaleFactor));
+		model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
+
+		GLuint viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
+		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+		GLuint modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+		GLuint projectionLoc = glGetUniformLocation(shaderProgram.ID, "projection");
+		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+		//int size;
+		VAO.Bind();
+		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
 
 		//Take Care of all glfw Events
 		glfwSwapBuffers(window);

@@ -8,7 +8,7 @@ public:
 	GLuint ID;
 	VertexArrayObject();
 
-	void LinkVBO(VertexBufferObject VBO, GLuint layout);
+	void LinkAttirb(VertexBufferObject& VBO, GLuint layout, GLint numComponents, GLenum type, GLsizeiptr stride, void* offset);
 	void Bind();
 	void Unbind();
 	void Delete();
