@@ -9,6 +9,7 @@
 #include "VertexArrayObject.h"
 #include "VertexBufferObject.h"
 #include "ElementBufferObject.h"
+#include "TerrainGenerator.h"
 
 int width = 800, height = 800;
 float Normalize(float input, float min, float max)
@@ -64,10 +65,10 @@ int main()
 
 	//Triangle Vertices
 	GLfloat vertices[] = {
-		-0.5f, -0.5f, 0.0f,
-		0.5f, -0.5f, 0.0f,
-		-0.5f, 0.5f, 0.0f,
-		0.5f, 0.5f, 0.0f,
+		-0.5f, -0.5f, 0.0f, 0.51f, 0.02f,0.03f,
+		0.5f, -0.5f, 0.0f, 0.51f, 0.02f,0.03f,
+		-0.5f, 0.5f, 0.0f, 0.51f, 0.02f,0.03f,
+		0.5f, 0.5f, 0.0f, 0.51f, 0.02f,0.03f,
 	};
 
 	GLuint indices[] = {
@@ -84,7 +85,8 @@ int main()
 	VertexBufferObject VBO1(vertices, sizeof(vertices));
 	ElementBufferObject EBO1(indices, sizeof(indices));
 
-	VAO1.LinkVBO(VBO1, 0);
+	VAO1.LinkAttirb(VBO1, 0, 3, GL_FLOAT, sizeof(GLfloat) * 6, (void*)0);
+	VAO1.LinkAttirb(VBO1, 1, 3, GL_FLOAT, sizeof(GLfloat) * 6, (void*)(3 * sizeof(GLfloat)));
 	VAO1.Unbind();
 	VBO1.Unbind();
 	EBO1.Unbind();
@@ -97,6 +99,7 @@ int main()
 	float cubeScale = 0.25f;
 	float squarePixelSize = cubeScale * 0.5f * height / 2;
 	bool jumping = false;
+	TerrainGenerator terrain(width, height);
 	while (!glfwWindowShouldClose(window))
 	{
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
@@ -108,11 +111,12 @@ int main()
 
 		shaderProgram.Activate();
 
-		//TakeInput(window, x, y);
+		TakeInput(window, x, y);
+
+		terrain.Generate(shaderProgram.ID, deltaTime);
 
 		y += speedY;
 		speedY += gravity;
-		//y = -height / 2 + 0.125 * height / 2;
 
 		if (y - squarePixelSize < -height / 2)
 		{
@@ -123,7 +127,7 @@ int main()
 
 		if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !jumping)
 		{
-			speedY = 20.0f;
+			speedY = 25.0f;
 			jumping = true;
 		}
 

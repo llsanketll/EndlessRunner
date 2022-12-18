@@ -158,7 +158,9 @@
     <ClCompile Include="..\Dependencies\glad\glad.c" />
     <ClCompile Include="ElementBufferObject.cpp" />
     <ClCompile Include="EndlessRunner.cpp" />
+    <ClCompile Include="Obstacle.cpp" />
     <ClCompile Include="ShaderClass.cpp" />
+    <ClCompile Include="TerrainGenerator.cpp" />
     <ClCompile Include="VertexArrayObject.cpp" />
     <ClCompile Include="VertexBufferObject.cpp" />
   </ItemGroup>
@@ -168,7 +170,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ElementBufferObject.h" />
+    <ClInclude Include="Obstacle.h" />
     <ClInclude Include="ShaderClass.h" />
+    <ClInclude Include="TerrainGenerator.h" />
     <ClInclude Include="VertexArrayObject.h" />
     <ClInclude Include="VertexBufferObject.h" />
   </ItemGroup>
