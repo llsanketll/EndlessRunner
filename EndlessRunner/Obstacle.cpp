@@ -5,6 +5,8 @@ Obstacle::Obstacle(float maxX, float maxY, float windowWidth, float windowHeight
 {
 	m_maxX = maxX;
 	m_maxY = maxY;
+	sizeX = maxX;
+	sizeY = maxY;
 	sizeX = RandFloat(maxX, 10.0f);
 	sizeY = RandFloat(maxY, 10.0f);
 	window.x = windowWidth;
@@ -25,17 +27,20 @@ Obstacle::Obstacle(float maxX, float maxY, float windowWidth, float windowHeight
 
 }
 
-void Obstacle::Draw(int posX, int posY, GLuint shaderID)
+void Obstacle::Draw(float posX, float posY, GLuint shaderID)
 {
+
+	this->posX = posX;
+	this->posY = posY;
 
 	glm::mat4 model = glm::mat4(1.0f);
 	glm::mat4 projection = glm::mat4(1.0f);
 	glm::mat4 view = glm::mat4(1.0f);
 
-	float squareScaleX = sizeX / (window.x * 2);
-	float squareScaleY = sizeY / (window.y * 2);
+	float squareScaleX = sizeX / (window.x);
+	float squareScaleY = sizeY / (window.y);
 
-	model = glm::translate(model, glm::vec3(Normalize(posX, 0, window.x), Normalize(posY, 0, window.y), 0.0f));
+	model = glm::translate(model, glm::vec3(Normalize(posX, 0, window.x / 2), Normalize(posY, 0, window.y / 2), 0.0f));
 	model = glm::scale(model, glm::vec3(squareScaleX, squareScaleY, 1.0f));
 
 	glm::mat4 MVP = projection * view * model;
@@ -44,6 +49,7 @@ void Obstacle::Draw(int posX, int posY, GLuint shaderID)
 
 	VAO.Bind();
 	glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
+	VAO.Unbind();
 }
 
 void Obstacle::Regenerate()

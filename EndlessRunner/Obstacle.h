@@ -26,6 +26,9 @@ class Obstacle
 public:
 	float sizeX;
 	float sizeY;
+
+	float posX;
+	float posY;
 private:
 	float Normalize(float input, float min, float max)
 	{
@@ -34,14 +37,13 @@ private:
 
 	float RandFloat(float max, float min)
 	{
-		return ((double)rand() / (RAND_MAX + 1)) * (max - min + 1) + min;
+		return ((float)rand() / (RAND_MAX + 1)) * (max - min + 1) + min;
 	}
 
 public:
 	Obstacle(float maxX, float maxY, float windowWidth, float windowHeight);
-	void Draw(int posX, int posY, GLuint ShaderID);
+	void Draw(float posX, float posY, GLuint ShaderID);
 	void Regenerate();
 	void Delete();
-
 };
 

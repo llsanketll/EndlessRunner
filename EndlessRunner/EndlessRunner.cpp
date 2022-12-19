@@ -11,7 +11,7 @@
 #include "ElementBufferObject.h"
 #include "TerrainGenerator.h"
 
-int width = 800, height = 800;
+float width = 1080.0f, height = 800.0f;
 float Normalize(float input, float min, float max)
 {
 	return (input - min) / (max - min);
@@ -48,7 +48,7 @@ int main()
 	const GLFWvidmode* screen = glfwGetVideoMode(primaryMonitor);
 	std::cout << screen->width << ", " << screen->height << std::endl;
 
-	GLFWwindow* window = glfwCreateWindow(width, height, "EndlessRunner", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow((int)width, (int)height, "EndlessRunner", NULL, NULL);
 
 
 	if (window == NULL)
@@ -61,14 +61,14 @@ int main()
 
 	//Load GLAD so it configures OPENGL
 	gladLoadGL();
-	glViewport(0, 0, 800, 800);
+	glViewport(0, 0, width, height);
 
 	//Triangle Vertices
 	GLfloat vertices[] = {
-		-0.5f, -0.5f, 0.0f, 0.51f, 0.02f,0.03f,
-		0.5f, -0.5f, 0.0f, 0.51f, 0.02f,0.03f,
-		-0.5f, 0.5f, 0.0f, 0.51f, 0.02f,0.03f,
-		0.5f, 0.5f, 0.0f, 0.51f, 0.02f,0.03f,
+		-1.0f, -1.0f, 0.0f, 0.51f, 0.02f,0.03f,
+		1.0f, -1.0f, 0.0f, 0.51f, 0.02f,0.03f,
+		-1.0f, 1.0f, 0.0f, 0.51f, 0.02f,0.03f,
+		1.0f, 1.0f, 0.0f, 0.51f, 0.02f,0.03f,
 	};
 
 	GLuint indices[] = {
@@ -93,13 +93,17 @@ int main()
 
 
 	float lastTime = 0, currentTime, deltaTime;
-	float x = -200.0f, y = 0;
 	float speedX = 0, speedY = 0;
-	float gravity = -1.0f;
-	float cubeScale = 0.25f;
-	float squarePixelSize = cubeScale * 0.5f * height / 2;
+	float gravity = -0.85f;
+	float sizeX = 100.0f;
+	float sizeY = 100.0f;
+	float squareScaleX = sizeX / width;
+	float squareScaleY = sizeY / height;
+	float x = -width / 2 + sizeX;
+	float y = 0;
 	bool jumping = false;
-	TerrainGenerator terrain(width, height);
+	double mouseX = 0, mouseY = 0;
+	TerrainGenerator terrain((float)width, (float)height);
 	while (!glfwWindowShouldClose(window))
 	{
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
@@ -112,22 +116,30 @@ int main()
 		shaderProgram.Activate();
 
 		TakeInput(window, x, y);
+		glfwGetCursorPos(window, &mouseX, &mouseY);
 
 		terrain.Generate(shaderProgram.ID, deltaTime);
+		if (terrain.DetectCollision(x, y, sizeX, sizeY))
+		{
+			std::cout << "Collision" << std::endl;
+		}
+
 
 		y += speedY;
 		speedY += gravity;
+		//x = (float)mouseX - width / 2;
+		//y = -1 * ((float)mouseY - height / 2);
 
-		if (y - squarePixelSize < -height / 2)
+		if (y - sizeY / 2 < -height / 2)
 		{
-			y = -height / 2 + squarePixelSize;
+			y = -height / 2 + sizeY / 2;
 			speedY = 0;
 			jumping = false;
 		}
 
 		if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !jumping)
 		{
-			speedY = 25.0f;
+			speedY = 30.0f;
 			jumping = true;
 		}
 
@@ -135,12 +147,17 @@ int main()
 		glm::mat4 projection = glm::mat4(1.0f);
 		glm::mat4 view = glm::mat4(1.0f);
 
-		model = glm::translate(model, glm::vec3(Normalize(x, 0, (float)width / 2), Normalize(y, 0, (float)height / 2), 0.0f));
-		model = glm::scale(model, glm::vec3(cubeScale, cubeScale, 1.0f));
+
+		model = glm::translate(model, glm::vec3(Normalize(x, 0, width / 2), Normalize(y, 0, height / 2), 0.0f));
+		model = glm::scale(model, glm::vec3(squareScaleX, squareScaleY, 1.0f));
+
+
 
 		glm::mat4 MVP = projection * view * model;
+
 		GLuint MVPLoc = glGetUniformLocation(shaderProgram.ID, "MVP");
 		glUniformMatrix4fv(MVPLoc, 1, GL_FALSE, glm::value_ptr(MVP));
+
 
 		VAO1.Bind();
 		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
