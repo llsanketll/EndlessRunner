@@ -1,15 +1,28 @@
+#if defined(_MSC_VER) && (_MSC_VER >= 1310)
+#	pragma warning(disable: 4996) // Disable the fopen, strcpy, sprintf being unsafe warning
+#endif
+
 #include <iostream>
 #include <stdlib.h>
-#include <glad/glad.h>
+#include <stdio.h>
+#include <math.h>
+#include <GLAD/glad.h>
 #include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+
+#define GLT_IMPLEMENTATION
+#include"gltext.h"
+
+#include <GLM/glm.hpp>
+#include <GLM/gtc/matrix_transform.hpp>
+#include <GLM/gtc/type_ptr.hpp>
+
 #include "ShaderClass.h"
 #include "VertexArrayObject.h"
 #include "VertexBufferObject.h"
 #include "ElementBufferObject.h"
 #include "TerrainGenerator.h"
+
+
 
 float width = 1080.0f, height = 800.0f;
 float Normalize(float input, float min, float max)
@@ -35,6 +48,24 @@ void TakeInput(GLFWwindow* window, float& x, float& y)
 }
 
 
+void DisplayTextGameOver(int score) {
+
+	char str[100];
+	GLTtext* text = gltCreateText();
+	//GLTtext* textReload = gltCreateText();
+	//gltSetText(textReload, "Press R to reload");
+
+	gltBeginDraw();
+	gltColor(1.0f, 0.0f, 0.0f, 1.0f);
+	sprintf(str, "Game Over! %d \n\nPress R to reset", score);
+	gltSetText(text, str);
+	gltDrawText2DAligned(text, (GLfloat)(width / 2), (GLfloat)(height / 2), 3.0f, GLT_CENTER, GLT_CENTER);
+
+	//gltDrawText2DAligned(textReload, (GLfloat)(width / 2 + 10.0f), (GLfloat)(height / 2 + 10.0f), 3.0f, GLT_CENTER, GLT_CENTER);
+
+	//gltDeleteText(text);
+	//gltDeleteText(textReload);
+}
 int main()
 {
 	//Initialized the window
@@ -53,22 +84,23 @@ int main()
 
 	if (window == NULL)
 	{
-		std::cout << "failed  to create" << std::endl;
+		std::cout << "failed  to create window" << std::endl;
 		glfwTerminate();
 		return -1;
 	}
+
 	glfwMakeContextCurrent(window);
 
 	//Load GLAD so it configures OPENGL
 	gladLoadGL();
-	glViewport(0, 0, width, height);
+	glViewport(0, 0, (GLsizei)width, (GLsizei)height);
 
 	//Triangle Vertices
 	GLfloat vertices[] = {
-		-1.0f, -1.0f, 0.0f, 0.51f, 0.02f,0.03f,
-		1.0f, -1.0f, 0.0f, 0.51f, 0.02f,0.03f,
-		-1.0f, 1.0f, 0.0f, 0.51f, 0.02f,0.03f,
-		1.0f, 1.0f, 0.0f, 0.51f, 0.02f,0.03f,
+		-1.0f, -1.0f, 0.0f,0.85f,0.0f,0.39f,
+		1.0f, -1.0f, 0.0f,0.85f,0.0f,0.39f,
+		-1.0f, 1.0f, 0.0f,0.85f,0.0f,0.39f,
+		1.0f, 1.0f, 0.0f,0.85f,0.0f,0.39f,
 	};
 
 	GLuint indices[] = {
@@ -94,20 +126,45 @@ int main()
 
 	float lastTime = 0, currentTime, deltaTime;
 	float speedX = 0, speedY = 0;
-	float gravity = -0.85f;
-	float sizeX = 100.0f;
-	float sizeY = 100.0f;
+	float gravity = -8000.f;
+	float sizeX = 80.0f;
+	float sizeY = 80.0f;
 	float squareScaleX = sizeX / width;
 	float squareScaleY = sizeY / height;
 	float x = -width / 2 + sizeX;
 	float y = 0;
 	bool jumping = false;
 	double mouseX = 0, mouseY = 0;
+	int score = 0;
+	bool gameOver = false;
 	TerrainGenerator terrain((float)width, (float)height);
+
+	// GLT initialistion for TEXT RENDERING
+	if (!gltInit())
+	{
+		fprintf(stderr, "Failed to initialize glText\n");
+		glfwTerminate();
+		return EXIT_FAILURE;
+	}
+
+	char str[20];
+	GLTtext* text1 = gltCreateText();
+	double time = glfwGetTime();
+
+	glEnable(GL_BLEND);
 	while (!glfwWindowShouldClose(window))
 	{
-		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
+
+		// GLT shader begin
+		gltBeginDraw();
+		gltColor(abs(cosf((float)glfwGetTime() * 0.5f)), abs(sinf((float)glfwGetTime())), 0.8f, 1.0f);
+		sprintf(str, "Score %d", score);
+		gltSetText(text1, str);
+		gltDrawText2DAligned(text1, (GLfloat)width, 0, 2.0f, GLT_RIGHT, GLT_TOP);
+
+
 
 		currentTime = static_cast<float>(glfwGetTime());
 		deltaTime = currentTime - lastTime;
@@ -115,20 +172,15 @@ int main()
 
 		shaderProgram.Activate();
 
+
 		TakeInput(window, x, y);
 		glfwGetCursorPos(window, &mouseX, &mouseY);
 
-		terrain.Generate(shaderProgram.ID, deltaTime);
-		if (terrain.DetectCollision(x, y, sizeX, sizeY))
-		{
-			std::cout << "Collision" << std::endl;
-		}
+		terrain.Generate(shaderProgram.ID, deltaTime, &score);
 
+		y += speedY * deltaTime;
+		speedY += gravity * deltaTime;
 
-		y += speedY;
-		speedY += gravity;
-		//x = (float)mouseX - width / 2;
-		//y = -1 * ((float)mouseY - height / 2);
 
 		if (y - sizeY / 2 < -height / 2)
 		{
@@ -139,8 +191,25 @@ int main()
 
 		if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !jumping)
 		{
+			speedY = 2800.0f;
+			jumping = true;
+		}
+
+		if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS && jumping)
+		{
+			gravity = -50000.0f;;
+		}
+		else
+		{
+			gravity = -8000.f;
+		}
+		if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS && gameOver)
+		{
 			speedY = 30.0f;
 			jumping = true;
+			terrain.ResetGame();
+			score = 0;
+			gameOver = false;
 		}
 
 		glm::mat4 model = glm::mat4(1.0f);
@@ -152,7 +221,6 @@ int main()
 		model = glm::scale(model, glm::vec3(squareScaleX, squareScaleY, 1.0f));
 
 
-
 		glm::mat4 MVP = projection * view * model;
 
 		GLuint MVPLoc = glGetUniformLocation(shaderProgram.ID, "MVP");
@@ -162,6 +230,13 @@ int main()
 		VAO1.Bind();
 		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
 
+		if (terrain.DetectCollision(x, y, sizeX, sizeY))
+		{
+			DisplayTextGameOver(score);
+			terrain.SetSpeed(0.0f);
+			speedY = 0.0f;
+			gameOver = true;
+		}
 
 		//Take Care of all glfw Events
 		glfwSwapBuffers(window);
@@ -173,6 +248,8 @@ int main()
 	VBO1.Delete();
 	EBO1.Delete();
 	shaderProgram.Delete();
+	gltDeleteText(text1);
+
 	glfwDestroyWindow(window);
 	glfwTerminate();
 

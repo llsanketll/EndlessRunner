@@ -170,6 +170,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ElementBufferObject.h" />
+    <ClInclude Include="gltext.h" />
     <ClInclude Include="Obstacle.h" />
     <ClInclude Include="ShaderClass.h" />
     <ClInclude Include="TerrainGenerator.h" />

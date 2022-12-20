@@ -5,15 +5,18 @@ TerrainGenerator::TerrainGenerator(float width, float height)
 	m_width = width;
 	m_height = height;
 	xPos1 = width + width * 0.5f;
-	xSpeed = -5.f;
-	ob1 = new Obstacle(200.0f, 250.f, m_width, m_height);
+	_score = 0;
+	xSpeed = -700.f;
+	ob1 = new Obstacle(150.0f, 250.f, m_width, m_height);
 }
 
-void TerrainGenerator::Generate(GLuint shaderID, float deltaTime)
+void TerrainGenerator::Generate(GLuint shaderID, float deltaTime, int* score)
 {
 	if (xPos1 < -m_width / 2 - ob1->sizeX / 2)
 	{
 		xPos1 = m_width / 2 + ob1->sizeX / 2;
+		_score++;
+		*score = _score;
 		ob1->Regenerate();
 	}
 
@@ -22,10 +25,10 @@ void TerrainGenerator::Generate(GLuint shaderID, float deltaTime)
 		ob1->Draw(xPos1, -m_height / 2 + ob1->sizeY / 2, shaderID);
 	}
 
-	xPos1 += xSpeed;
+	xPos1 += xSpeed * deltaTime;
 
-	if (xSpeed > -20.0f)
-		xSpeed -= deltaTime * 0.5f;
+	if (xSpeed > -100000.0f && xSpeed < 0.0f)
+		xSpeed -= deltaTime * 20.0f;
 }
 
 bool TerrainGenerator::DetectCollision(float objX, float objY, float sizeX, float sizeY)
@@ -50,7 +53,12 @@ bool TerrainGenerator::DetectCollision(float objX, float objY, float sizeX, floa
 	return false;
 }
 
-void TerrainGenerator::setSpeed(float speed)
+void TerrainGenerator::SetSpeed(float speed)
 {
 	xSpeed = speed;
+}
+void TerrainGenerator::ResetGame() {
+	xPos1 = m_width + m_width * 0.5f;
+	_score = 0;
+	xSpeed = -700.f;
 }
